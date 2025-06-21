@@ -1,5 +1,6 @@
 import copy
-from   typing                   import Iterable
+from   typing                   import Iterable, Optional
+from   venv                     import logger
 
 from   board                    import Coin
 from   board.layout             import LayoutInterface
@@ -11,30 +12,29 @@ class BoardState:
     Encapsulates the current state of the board including coin positions and valid move logic.
     """
 
-    def __init__(self, board: LayoutInterface, coins: Iterable[Coin]):
+    def __init__(self, board: LayoutInterface, coins: Iterable[Coin]) -> None:
         self.board = copy.deepcopy(board)
         self.point_coin_map: dict[Point, Coin] = {}
         for coin in coins:
             self.set_coin(coin)
-        self._dfs_parent = {}
 
-    def get_all_points(self):
+    def get_all_points(self) -> list[Point]:
         """Returns all valid points on the board."""
         return list(self.board)
 
-    def get_all_coins(self):
+    def get_all_coins(self) -> list[Coin]:
         """Returns a list of all coins currently on the board."""
-        return [coin for coin in self.point_coin_map.values()]
+        return list(self.point_coin_map.values())
 
     def has_coin(self, point: Point) -> bool:
-        """Checks if there is a coin at the given point."""
+        """True if there is a coin at the given point."""
         return point in self.point_coin_map
 
-    def get_coin(self, point: Point) -> Coin | None:
-        """Returns the coin at a given point, if any."""
+    def get_coin(self, point: Point) -> Optional[Coin]:
+        """Returns the coin at a given point, or None if empty."""
         return self.point_coin_map.get(point)
 
-    def set_coin(self, coin: Coin):
+    def set_coin(self, coin: Coin) -> None:
         """Places a coin at its point on the board."""
         assert coin.point in self.board, f"Invalid coin location: {coin.point}"
         self.point_coin_map[coin.point] = coin
@@ -44,18 +44,17 @@ class BoardState:
         assert point in self.point_coin_map, f"No coin at: {point}"
         return self.point_coin_map.pop(point)
 
-    def move_coin(self, src: Point, dst: Point):
-        """Moves a coin from src to dst and updates the internal state."""
+    def move_coin(self, src: Point, dst: Point) -> None:
+        """Moves a coin from src to dst."""
         coin = self.remove_coin_at(src)
         self.set_coin(Coin(dst, coin.region))
-        return self.board
 
-    def children(self, coin: Coin, cur: Point):
+    def children(self, coin: Coin, cur: Point) -> list[tuple[Point, bool]]:
         """
         Computes all valid adjacent or jump moves from the current point for a given coin.
 
         Returns:
-            list[tuple[Point, bool]]: A list of (next_point, is_jump) pairs.
+            List of (next_point, is_jump) pairs.
         """
         children: list[tuple[Point, bool]] = []
         for delta in self.board.directions:
@@ -69,12 +68,22 @@ class BoardState:
                     children.append((jump, True))
         return children
 
-    def valid_moves(self, coin: Coin):
+    def valid_moves(self, coin: Coin) -> set[Point]:
+        """
+        Computes all valid moves for the given coin using DFS with jump chaining.
+
+        Returns:
+            Set of all reachable positions.
+        """
+        parent = self.valid_moves_helper(coin)
+        return {point for point in parent if self.board.can_enter(coin, point)}
+
+    def valid_moves_helper(self, coin: Coin) -> dict[Point, Point]:
         """
         Computes all reachable positions for the given coin using DFS with jump chaining.
 
         Returns:
-            set[Point]: All reachable positions.
+            Dict of all reachable positions mapped to their previous positions.
         """
         dfs_stack = [coin.point]
         visited: set[Point] = set()
@@ -97,26 +106,24 @@ class BoardState:
         # Add immediate non-jump steps
         for nxt, is_jump in self.children(coin, coin.point):
             if not is_jump:
-                finished.add(nxt)
                 parent[nxt] = cur
-        self._dfs_parent = parent
-        finished.remove(coin.point)
-        return {point for point in finished if self.board.can_enter(coin, point)}
+        logger.debug(f"Valid moves for {coin}: {parent}")
+        return parent
 
-    def steps(self, coin: Coin, point: Point | None):
+    def steps(self, coin: Coin, point: Optional[Point]) -> list[Point]:
         """
         Reconstructs the path from the original coin location to the given point.
 
         Returns:
-            list[Point]: Ordered path of moves.
+            Ordered path of moves.
         """
-        self.valid_moves(coin)
-        path = []
+        parent = self.valid_moves_helper(coin)
+        path: list[Point] = []
         while point:
             path.append(point)
-            point = self._dfs_parent.get(point)
+            point = parent.get(point)
         return path[::-1]
 
-    def coin_at_destination(self, coin: Coin):
+    def coin_at_destination(self, coin: Coin) -> bool:
         """Checks if coin has reached its destination region/color"""
         return self.board.region(coin.point) == self.board.opposite_region(coin.region)

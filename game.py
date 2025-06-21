@@ -1,12 +1,11 @@
-from   functools                import partial
-from   typing                   import Optional
+from   typing                   import Any
 
-from   board                    import Layout
-from   board.coin               import Coin
+from   board                    import Coin, Layout
+from   player                   import GreedyPlayer, HumanPlayer
 from   player.base              import Player
-from   player.computer          import ComputerPlayer
-from   player.human             import HumanPlayer
 from   render.board             import BaseBoardRenderer
+from   state                    import GameState
+from   state.board_state        import BoardState
 from   utils                    import get_spaced_around_spots
 
 
@@ -18,17 +17,17 @@ class GameManager:
     Attributes:
         renderer (BaseBoardRenderer): Responsible for rendering board state.
         players (List[Player]): List of player identifiers.
-        player_region_map (Dict[int, List[int]]): Maps each player to their regions.
+        player_id_region_map (Dict[int, List[int]]): Maps each player to their regions.
         current_player_index (int): Tracks whose turn it is.
     """
 
     def __init__(
         self,
-        renderer_factory: partial[BaseBoardRenderer],
-        total_colors,
+        renderer: BaseBoardRenderer,
+        total_colors: int,
         num_players: tuple[int, int],
-        colors_per_player,
-    ):
+        colors_per_player: int,
+    ) -> None:
         """
         Initializes the GameManager with the game setup.
 
@@ -42,28 +41,38 @@ class GameManager:
         """
         human_players, computer_players = num_players
         total_players = sum(num_players)
-        self.players = [HumanPlayer(i) for i in range(human_players)] + [
-            ComputerPlayer(i) for i in range(human_players, total_players)
+        players: list[Player] = [
+            *[HumanPlayer(i) for i in range(human_players)],
+            *[GreedyPlayer(i) for i in range(human_players, total_players)],
         ]
         if colors_per_player * total_players > total_colors:
             raise ValueError("Too many regions requested for given number of players.")
         regions_range_per_player = total_colors // total_players
-        self.player_region_map: dict[int, list[int]] = self._generate_region_map(
-            regions_range_per_player, colors_per_player, total_colors
+        player_id_region_map: dict[int, list[int]] = self._generate_region_map(
+            players, regions_range_per_player, colors_per_player, total_colors
         )
-        all_regions = sum(self.player_region_map.values(), [])
+        all_regions = sum(player_id_region_map.values(), [])
         layout = Layout(side_count=total_colors)
         coins = [
             Coin(point, region)
             for point in layout
-            if (region := layout.region(point)) in all_regions
+            if (region := layout.region(point))
+            if region in all_regions
         ]
-        self.current_player_index = 0
-        self.renderer = renderer_factory(board=layout, coins=coins)
+        self.game_state = GameState(
+            BoardState(layout, coins),
+            players,
+            player_id_region_map,
+        )
+        self.renderer = renderer
 
+    def __getattr__(self, name) -> Any:
+        return getattr(self.game_state, name)
+
+    @staticmethod
     def _generate_region_map(
-        self, regions_range_per_player, colors_per_player, total_colors
-    ):
+        players, regions_range_per_player, colors_per_player, total_colors
+    ) -> dict[int, list[int]]:
         """
         Creates a mapping of each player to a list of region indices.
 
@@ -82,56 +91,23 @@ class GameManager:
                     regions_range_per_player, colors_per_player, total_colors
                 )
             ]
-            for idx, player in enumerate(self.players)
+            for idx, player in enumerate(players)
         }
 
-    def current_player(self) -> Player:
-        """Returns the ID of the current player."""
-        return self.players[self.current_player_index]
-
-    def prompt_player(self):
+    def prompt_player(self) -> None:
         """
         Displays a prompt indicating the current player's turn.
         """
-        player = self.current_player()
-        self.renderer.prompt_player(player, self.player_region_map[player.player_id])
+        player = self.game_state.current_player()
+        self.renderer.prompt_player(
+            player, self.game_state.player_id_region_map[player.player_id]
+        )
 
-    def prompt_win(self):
+    def prompt_win(self) -> None:
         """
         Displays a prompt indicating the winner.
         """
-        player = self.current_player()
-        self.renderer.prompt_win(player, self.player_region_map[player.player_id])
-
-    def is_players_coin(self, coin: Coin, player: Optional[Player] = None):
-        """
-        Checks if the given coin belongs to the current player.
-
-        Args:
-            coin (Coin): The coin to check.
-
-        Returns:
-            bool: True if the coin belongs to the current player.
-        """
-        player = player or self.current_player()
-        return coin.region in self.player_region_map[player.player_id]
-
-    def next_turn(self):
-        """Advances the turn to the next player."""
-        self.current_player_index = (self.current_player_index + 1) % len(self.players)
-
-    def has_current_player_won(self):
-        """
-        Checks whether the current player has won.
-
-        A player wins if all their coins are in the opposite region.
-
-        Returns:
-            bool: True if the current player has won.
-        """
-        player_id = self.current_player().player_id
-        return all(
-            self.renderer.mutator.coin_at_destination(coin)
-            for coin in self.renderer.mutator.get_all_coins()
-            if coin.region in self.player_region_map[player_id]
+        player = self.game_state.current_player()
+        self.renderer.prompt_win(
+            player, self.game_state.player_id_region_map[player.player_id]
         )

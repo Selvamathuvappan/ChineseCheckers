@@ -1,5 +1,4 @@
-from   geometry.line            import Line
-from   geometry.point           import Point
+from   geometry                 import Line, Point
 from   geometry.utils           import (get_line_intersection,
                                         get_trapping_lines, point_enclosed_by)
 

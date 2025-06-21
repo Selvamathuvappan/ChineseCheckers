@@ -1,8 +1,8 @@
 import pytest
 
-from   board.coin               import Coin
+from   board                    import Coin
 from   board.layout             import LayoutInterface
-from   geometry.point           import Point
+from   geometry                 import Point
 from   state                    import BoardState
 
 
@@ -14,6 +14,9 @@ class DummyBoard(LayoutInterface):
     @property
     def directions(self):
         return [Point(1, 0), Point(0, 1), Point(-1, 0), Point(0, -1)]
+
+    def positive_direction(self, region: int) -> Point:
+        return Point(-0, -1) if region == 1 else Point(0, 1)
 
     def __contains__(self, point: Point):
         return point in self.valid_points

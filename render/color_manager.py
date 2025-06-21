@@ -20,20 +20,14 @@ class ColorManager:
         curses.COLOR_YELLOW,
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._cache = {}
         self._next_id = 1
         self._max_pairs = 1 + (len(self._COLOR_PALETTE) - 1) * 2
 
-    def get_region_style(self, region):
+    def get_region_style(self, region: int) -> tuple[int, bool]:
         """
         Determines the foreground color and bold style for a given region.
-
-        Args:
-            region (int): Region ID.
-
-        Returns:
-            tuple: (color, bold) for the given region.
         """
         if region == 0:
             return curses.COLOR_WHITE, False
@@ -43,19 +37,9 @@ class ColorManager:
         bold = index >= palette_size
         return color, bold
 
-    def color_pair(self, fg, bg=curses.COLOR_BLACK):
+    def color_pair(self, fg: int, bg: int = curses.COLOR_BLACK) -> int:
         """
         Retrieves or creates a curses color pair.
-
-        Args:
-            fg (int): Foreground color.
-            bg (int, optional): Background color. Defaults to black.
-
-        Returns:
-            int: curses attribute representing the color pair.
-
-        Raises:
-            RuntimeError: If terminal color pair limit is exceeded.
         """
         key = (fg, bg)
         if key in self._cache:
@@ -70,16 +54,9 @@ class ColorManager:
         self._next_id += 1
         return pair
 
-    def __call__(self, region, highlight=False):
+    def __call__(self, region: int, highlight: bool = False) -> int:
         """
         Computes the display attribute for a given region and highlight flag.
-
-        Args:
-            region (int): Region ID.
-            highlight (bool, optional): Whether the point should be highlighted.
-
-        Returns:
-            int: Curses attribute for rendering.
         """
         fg, bold = self.get_region_style(region)
         attr = self.color_pair(fg)

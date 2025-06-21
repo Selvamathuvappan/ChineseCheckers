@@ -1,4 +1,4 @@
-from   .computer                import ComputerPlayer
+from   .computer                import GreedyPlayer
 from   .human                   import HumanPlayer
 
-__all__ = ["HumanPlayer", "ComputerPlayer"]
+__all__ = ["HumanPlayer", "GreedyPlayer"]

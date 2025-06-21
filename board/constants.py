@@ -1,7 +1,6 @@
 import itertools
 
-from   geometry                 import Line
-from   geometry.point           import Point
+from   geometry                 import Line, Point
 
 SQUARE = [
     Line(0, 1, 4),

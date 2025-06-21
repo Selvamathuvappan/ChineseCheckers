@@ -17,7 +17,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def prompt_game_setup():
+def prompt_game_setup() -> partial[GameManager]:
+    """
+    Prompts the user for game setup parameters and returns a GameManager factory.
+    """
     while True:
         try:
             total_colors = int(
@@ -61,14 +64,16 @@ def prompt_game_setup():
 
 
 def main(stdscr, game_factory: partial[GameManager]):
+    """
+    Main game loop. Handles curses setup, game initialization, and turn loop.
+    """
     curses.curs_set(0)
     curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
     curses.start_color()
     curses_io = CursesIO(stdscr)
     try:
-        renderer_factory = partial(CursesBoardRenderer, stdscr=stdscr)
-        game = game_factory(renderer_factory)
-        game.renderer.render()
+        game = game_factory(CursesBoardRenderer(stdscr))
+        game.renderer.render(game.board)
 
         while True:
             game.prompt_player()
@@ -94,5 +99,6 @@ def main(stdscr, game_factory: partial[GameManager]):
         pass  # Ignore invalid click
 
 
-game_factory = prompt_game_setup()
-curses.wrapper(lambda stdscr: main(stdscr, game_factory))
+if __name__ == "__main__":
+    game_factory = prompt_game_setup()
+    curses.wrapper(lambda stdscr: main(stdscr, game_factory))

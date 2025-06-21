@@ -1,6 +1,6 @@
 from   abc                      import ABC, abstractmethod
 import logging
-from   typing                   import Iterable, Iterator
+from   typing                   import Iterable, Iterator, Optional
 
 from   board                    import Coin, constants
 from   geometry                 import Line, Point
@@ -17,7 +17,7 @@ class LayoutInterface(ABC):
     direction rules, validity of coins and entry rules.
     """
 
-    def __init__(self, side_count: int):
+    def __init__(self, side_count: int) -> None:
         self.n = side_count
 
     @property
@@ -64,61 +64,53 @@ class LayoutInterface(ABC):
         pass
 
     @abstractmethod
-    def region(self, point) -> int | None:
+    def region(self, point: Point) -> Optional[int]:
         """
         Get the region index [0–n] a point lies in.
 
-        Args:
-            point (Point): Point to check.
-
         Returns:
             int | None: Region index or None if point is invalid.
         """
         pass
 
-    @abstractmethod
-    def opposite_region(self, region: int) -> int | None:
+    def opposite_region(self, region: int) -> Optional[int]:
         """
         Get the destinsation region for coins at input region.
 
-        Args:
-            region (int): Region index to check.
-
         Returns:
             int | None: Region index or None if point is invalid.
         """
-        pass
+        if region == 0:
+            return None
+        region -= 1
+        return (region + self.n // 2) % self.n + 1
 
 
 class Layout(LayoutInterface):
-    def __init__(self, side_count: int):
-        """
-        Initialize the board layout given the number of sides (regions).
+    """
+    Concrete implementation of LayoutInterface for a polygonal Chinese Checkers board.
+    Handles region detection, movement validation, and geometric bounds.
+    """
 
-        Args:
-            side_count (int): Number of polygon sides (typically 4, 6, or 8).
-        """
+    def __init__(self, side_count: int) -> None:
+        """Initialize the board layout given the number of polygon sides/regions (typically 4, 6, or 8)."""
         super().__init__(side_count)
         central_polygon = constants.REGION_POLYGON_MAP[side_count]
         self.central_polygon = central_polygon
 
     @property
-    def directions(self):
+    def directions(self) -> Iterable[Point]:
         return constants.DIRECTIONS
 
     def positive_direction(self, region: int) -> Point:
-        assert region, "Positive direction is only defined for "
+        """Returns the movement direction towards opposite/destination region for a given region."""
+        assert region, "Positive direction is only defined for non-central regions."
         a, b, c = self.central_polygon[region - 1]
         return Point(-a * sign(c), -b * sign(c))
 
     @property
-    def outer_polygon(self):
-        """
-        Constructs outer bounding line pairs that form each region's wedge.
-
-        Returns:
-            List[List[Line]]: List of bounding line pairs for each region.
-        """
+    def outer_polygon(self) -> list[list[Line]]:
+        """Constructs outer bounding line pairs that form each region's wedge."""
         bounding_line_pairs: list[list[Line]] = []
         prev, cur, nxt = -1, 0, 1
         while cur < self.n:
@@ -143,12 +135,9 @@ class Layout(LayoutInterface):
         return bounding_line_pairs
 
     @property
-    def corners(self):
+    def corners(self) -> list[Point]:
         """
-        Get polygon corners by intersecting outer lines.
-
-        Returns:
-            List[Point]: Intersection points of outer polygon wedges.
+        Get outer polygon/wedge corners by intersecting outer lines.
         """
         corners = [
             point
@@ -159,25 +148,17 @@ class Layout(LayoutInterface):
         return [Point(*map(int, corner)) for corner in corners]
 
     @property
-    def x_bounds(self):
-        x_corners, y_corners = zip(*self.corners)
+    def x_bounds(self) -> tuple[int, int]:
+        x_corners, _ = zip(*self.corners)
         return min(x_corners), max(x_corners)
 
     @property
-    def y_bounds(self):
-        x_corners, y_corners = zip(*self.corners)
+    def y_bounds(self) -> tuple[int, int]:
+        _, y_corners = zip(*self.corners)
         return min(y_corners), max(y_corners)
 
-    def __contains__(self, point: Point):
-        """
-        Determine if a point lies inside the layout.
-
-        Args:
-            point (Point): Point to test.
-
-        Returns:
-            bool: True if within board layout.
-        """
+    def __contains__(self, point: Point) -> bool:
+        """Determine if a point lies inside the layout."""
         if (point.x + point.y) & 1:
             return False
         if not (
@@ -197,28 +178,15 @@ class Layout(LayoutInterface):
 
         return False
 
-    def __iter__(self):
-        """
-        Iterate through all points within the board layout.
-
-        Yields:
-            Point: Valid points in the layout.
-        """
+    def __iter__(self) -> Iterator[Point]:
+        """Iterate through all points within the board layout."""
         for x in range(min(self.x_bounds), max(self.x_bounds) + 1):
             for y in range(min(self.y_bounds), max(self.y_bounds) + 1):
                 if Point(x, y) in self:
                     yield Point(x, y)
 
-    def region(self, point):
-        """
-        Get the region index [0–n] a point lies in.
-
-        Args:
-            point (Point): Point to check.
-
-        Returns:
-            int | None: Region index or None if point is invalid.
-        """
+    def region(self, point: Point) -> Optional[int]:
+        """Get the region index [0–n] a point lies in."""
         if not point in self:
             return None
         for idx, (line, line_pair) in enumerate(
@@ -230,20 +198,15 @@ class Layout(LayoutInterface):
                 return idx
         return 0
 
-    def opposite_region(self, region: int):
-        if region == 0:
-            return None
-        region -= 1
-        return (region + self.n // 2) % self.n + 1
-
-    def can_enter(self, coin, point, relax_region_restriction=False):
+    def can_enter(
+        self, coin: Coin, point: Point, relax_region_restriction: bool = False
+    ):
         """
         Determine if a coin can legally move to the given point.
-
         Args:
             coin (Coin): The coin in question.
             point (Point): Target location.
-            relax_region_restriction (bool): Allows any region entry if True.
+            relax_region_restriction (bool): Allows any region entry if True. Set to true in jump moves.
 
         Returns:
             bool: Whether movement is valid.
@@ -262,10 +225,10 @@ class Layout(LayoutInterface):
             point_region in [coin_region, self.opposite_region(coin_region)]
         )
 
-    def is_valid_region(self, region):
+    def is_valid_region(self, region: int) -> bool:
         return isinstance(region, int) and 0 <= region <= self.n
 
-    def is_valid_coin(self, coin: Coin):
+    def is_valid_coin(self, coin: Coin) -> bool:
         return (
             self.is_valid_region(coin.region)
             and coin.region != 0

@@ -1,5 +1,4 @@
-from   geometry.line            import Line
-from   geometry.point           import Point
+from   geometry                 import Line, Point
 
 
 def test_from_points_basic():

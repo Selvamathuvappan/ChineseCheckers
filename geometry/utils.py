@@ -1,10 +1,9 @@
-from   typing                   import Iterable, List
+from   typing                   import Iterable, Optional
 
-from   geometry.line            import Line
-from   geometry.point           import Point
+from   geometry                 import Line, Point
 
 
-def get_trapping_lines(p1: Point, p2: Point) -> List[Line]:
+def get_trapping_lines(p1: Point, p2: Point) -> list[Line]:
     """
     Given two points aligned along one of the base directions of the board,
     returns a pair of lines that, together with the base line through p1 and p2,
@@ -45,7 +44,7 @@ def get_trapping_lines(p1: Point, p2: Point) -> List[Line]:
     raise ValueError("No trapping line configuration intersects opposite to origin")
 
 
-def get_line_intersection(line1: Line, line2: Line):
+def get_line_intersection(line1: Line, line2: Line) -> Optional[tuple[float, float]]:
     """
     Returns intersection point (x, y) of two lines in general form:
     a1*x + b1*y = c1

@@ -1,6 +1,6 @@
 import pytest
 
-from   geometry.point           import Point
+from   geometry                 import Point
 
 
 def test_point_creation():
