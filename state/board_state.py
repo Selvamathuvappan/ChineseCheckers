@@ -1,6 +1,5 @@
 import copy
 from   typing                   import Iterable, Optional
-from   venv                     import logger
 
 from   board                    import Coin
 from   board.layout             import LayoutInterface
@@ -107,7 +106,6 @@ class BoardState:
         for nxt, is_jump in self.children(coin, coin.point):
             if not is_jump:
                 parent[nxt] = cur
-        logger.debug(f"Valid moves for {coin}: {parent}")
         return parent
 
     def steps(self, coin: Coin, point: Optional[Point]) -> list[Point]:

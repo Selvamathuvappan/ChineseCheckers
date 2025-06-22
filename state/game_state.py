@@ -1,4 +1,4 @@
-from   typing                   import Any, Optional, TYPE_CHECKING
+from   typing                   import Any, Optional, Sequence, TYPE_CHECKING
 
 from   board                    import Coin
 
@@ -16,22 +16,23 @@ class GameState:
     def __init__(
         self,
         board_state: "BoardState",
-        players: list["Player"],
+        players: Sequence["Player"],
         player_id_region_map: dict[int, list[int]],
+        current_player_index: int = 0,
     ) -> None:
         """
         Initializes the GameState with the game setup.
         """
         self.players = players
         self.player_id_region_map = player_id_region_map
-        self.board = board_state
-        self.current_player_index = 0
+        self.board_state = board_state
+        self.current_player_index = current_player_index
 
     def __getattr__(self, name) -> Any:
         """
         Delegate attribute access to the board if not found in GameState.
         """
-        return getattr(self.board, name)
+        return getattr(self.board_state, name)
 
     def current_player(self) -> "Player":
         """Returns the the current player."""
@@ -55,7 +56,7 @@ class GameState:
         """
         player_id = self.current_player().player_id
         return all(
-            self.board.coin_at_destination(coin)
-            for coin in self.board.get_all_coins()
+            self.board_state.coin_at_destination(coin)
+            for coin in self.board_state.get_all_coins()
             if coin.region in self.player_id_region_map[player_id]
         )

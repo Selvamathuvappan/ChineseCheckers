@@ -3,7 +3,6 @@ from   functools                import partial
 import logging
 import os
 
-from   board.constants          import REGION_POLYGON_MAP
 from   game                     import GameManager
 from   player.base              import CursesIO
 from   render                   import CursesBoardRenderer
@@ -23,14 +22,7 @@ def prompt_game_setup() -> partial[GameManager]:
     """
     while True:
         try:
-            total_colors = int(
-                input(
-                    f"Enter total number of colors (regions on board) from {', '.join(map(str, REGION_POLYGON_MAP))}: "
-                )
-            )
-            if total_colors not in REGION_POLYGON_MAP:
-                print("Please enter valid numbers.\n")
-                continue
+            total_colors = 6  # Default number of colors
             num_players = tuple(
                 map(
                     int,
@@ -73,7 +65,7 @@ def main(stdscr, game_factory: partial[GameManager]):
     curses_io = CursesIO(stdscr)
     try:
         game = game_factory(CursesBoardRenderer(stdscr))
-        game.renderer.render(game.board)
+        game.renderer.render(game.board_state)
 
         while True:
             game.prompt_player()
@@ -81,6 +73,7 @@ def main(stdscr, game_factory: partial[GameManager]):
             stdscr.refresh()
 
             try:
+                logger.debug(f"Current player: {game.current_player()}")
                 game.current_player().play_turn(game, curses_io)
                 if game.has_current_player_won():
                     game.prompt_win()

@@ -1,7 +1,7 @@
-from   typing                   import Any
+from   typing                   import Any, Sequence
 
 from   board                    import Coin, Layout
-from   player                   import GreedyPlayer, HumanPlayer
+from   player                   import HumanPlayer, MinMaxPlayer
 from   player.base              import Player
 from   render.board             import BaseBoardRenderer
 from   state                    import GameState
@@ -16,7 +16,7 @@ class GameManager:
 
     Attributes:
         renderer (BaseBoardRenderer): Responsible for rendering board state.
-        players (List[Player]): List of player identifiers.
+        players (Sequence[Player]): List of player identifiers.
         player_id_region_map (Dict[int, List[int]]): Maps each player to their regions.
         current_player_index (int): Tracks whose turn it is.
     """
@@ -40,10 +40,10 @@ class GameManager:
             ValueError: If total regions requested exceed the number available on the board.
         """
         human_players, computer_players = num_players
-        total_players = sum(num_players)
-        players: list[Player] = [
+        total_players = human_players + computer_players
+        players: Sequence[Player] = [
             *[HumanPlayer(i) for i in range(human_players)],
-            *[GreedyPlayer(i) for i in range(human_players, total_players)],
+            *[MinMaxPlayer(i) for i in range(human_players, total_players)],
         ]
         if colors_per_player * total_players > total_colors:
             raise ValueError("Too many regions requested for given number of players.")

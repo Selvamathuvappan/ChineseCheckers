@@ -1,5 +1,4 @@
 from   abc                      import ABC, abstractmethod
-import logging
 from   typing                   import Iterable, Iterator, Optional
 
 from   board                    import Coin, constants
@@ -7,8 +6,6 @@ from   geometry                 import Line, Point
 from   geometry.utils           import (get_line_intersection,
                                         get_trapping_lines, point_enclosed_by)
 from   utils                    import sign
-
-logger = logging.getLogger(__name__)
 
 
 class LayoutInterface(ABC):
@@ -84,6 +81,14 @@ class LayoutInterface(ABC):
             return None
         region -= 1
         return (region + self.n // 2) % self.n + 1
+
+    @property
+    @abstractmethod
+    def corners(self) -> list[Point]:
+        """
+        Get the outer polygon corners of the board layout.
+        """
+        pass
 
 
 class Layout(LayoutInterface):

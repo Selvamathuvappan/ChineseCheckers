@@ -26,7 +26,9 @@ class HumanPlayer(Player):
         Returns True if a move was performed, False otherwise.
         """
         move_over = False
-        clicked_point = game.renderer.screen_to_board(game.board, io.get_mouse_point())
+        clicked_point = game.renderer.screen_to_board(
+            game.board_state, io.get_mouse_point()
+        )
         coin_at_click = game.get_coin(clicked_point)
         if self.selected_coin is None:
             if not coin_at_click:
@@ -37,11 +39,11 @@ class HumanPlayer(Player):
         else:
             if clicked_point in self.highlighted_moves:
                 move_path = game.steps(self.selected_coin, clicked_point)
-                game.renderer.move(game.board, move_path)
+                game.renderer.move(game.board_state, move_path)
                 move_over = True
             self.selected_coin = None
             self.highlighted_moves = set()
-        game.renderer.highlight(game.board, self.highlighted_moves)
+        game.renderer.highlight(game.board_state, self.highlighted_moves)
         return move_over
 
     def perform_turn(self, game: "GameManager", io: IOInterface) -> None:

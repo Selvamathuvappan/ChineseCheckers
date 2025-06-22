@@ -155,8 +155,11 @@ class CursesBoardRenderer(BaseBoardRenderer):
     ) -> None:
         self.stdscr.move(*position)
         self.stdscr.clrtoeol()
+        from player.human import HumanPlayer
 
-        self.stdscr.addstr("Player ", curses.A_BOLD)
+        player_prefix = "Human" if isinstance(player, HumanPlayer) else "Computer"
+
+        self.stdscr.addstr(f"{player_prefix} Player ", curses.A_BOLD)
 
         for region in regions:
             attr = color_manager(region)
